@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% block title %}Shared kiosk · PlainPunch{% endblock %}{% block content %}
+<section class="auth-card wide"><p class="eyebrow">Shared kiosk</p><h1>Make one explicit punch.</h1><p>Enter your employee code and PIN. The next person will not see your history.</p><form method="post" class="stack"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>Employee code<input name="employee_code" autocomplete="off" required></label><label>PIN<input type="password" inputmode="numeric" name="pin" autocomplete="off" required></label><fieldset><legend>Action</legend><div class="action-grid">{% for value, label in [('clock-in','Clock in'),('break-start','Start break'),('break-end','End break'),('clock-out','Clock out')] %}<label class="choice"><input type="radio" name="action" value="{{ value }}" required>{{ label }}</label>{% endfor %}</div></fieldset><button class="primary">Record punch</button></form></section>
+{% endblock %}
+

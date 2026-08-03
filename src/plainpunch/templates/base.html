@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>{% block title %}PlainPunch{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='plainpunch.css') }}">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="{{ url_for('dashboard') if g.user else url_for('login') }}"><span>PP</span> PlainPunch</a>
+      <nav>
+        {% if g.user %}
+          {% if g.user['is_admin'] %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
+          <form action="{{ url_for('logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="link-button">Sign out</button></form>
+        {% else %}<a href="{{ url_for('kiosk') }}">Shared kiosk</a>{% endif %}
+      </nav>
+    </header>
+    <main>
+      {% for category, message in get_flashed_messages(with_categories=true) %}<div class="notice {{ category }}">{{ message }}</div>{% endfor %}
+      {% block content %}{% endblock %}
+    </main>
+    <footer>Self-hosted. No location tracking, screenshots, activity monitoring, or third-party analytics.</footer>
+  </body>
+</html>
+

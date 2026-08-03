@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% block title %}Request correction · PlainPunch{% endblock %}{% block content %}
+<section class="auth-card wide"><p class="eyebrow">Correction request</p><h1>Ask for a transparent change.</h1><p>The original value and the administrator’s decision remain in the audit history.</p><form method="post" class="stack"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>Clock in<input type="datetime-local" name="clock_in" value="{{ local_input(entry['clock_in'], config['TIMEZONE']) }}" required></label><label>Clock out<input type="datetime-local" name="clock_out" value="{{ local_input(entry['clock_out'], config['TIMEZONE']) }}"></label><label>Reason<textarea name="reason" rows="4" required></textarea></label><button class="primary">Submit request</button></form></section>
+{% endblock %}
+

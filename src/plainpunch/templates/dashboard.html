@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% block content %}
+<section class="hero"><div><p class="eyebrow">{{ g.user['name'] }}</p><h1>{% if active_break %}You’re on break.{% elif active %}You’re clocked in.{% else %}You’re off the clock.{% endif %}</h1><p>Your current state is explicit. PlainPunch never infers activity from your device.</p></div>
+<div class="punch-actions">{% if not active %}{{ punch_button('clock-in', 'Clock in') }}{% elif active_break %}{{ punch_button('break-end', 'End break') }}{{ punch_button('clock-out', 'Clock out') }}{% else %}{{ punch_button('break-start', 'Start break') }}{{ punch_button('clock-out', 'Clock out') }}{% endif %}</div></section>
+<section><div class="section-heading"><div><p class="eyebrow">Recent history</p><h2>Your last 30 shifts</h2></div></div>
+<div class="table-wrap"><table><thead><tr><th>Clock in</th><th>Clock out</th><th>Worked</th><th>Source</th><th></th></tr></thead><tbody>{% for entry in entries %}<tr><td>{{ entry.clock_in|localtime }}</td><td>{{ entry.clock_out|localtime }}</td><td>{{ entry.worked_seconds|duration }}</td><td>{{ entry.source }}</td><td><a href="{{ url_for('request_correction', entry_id=entry.id) }}">Request correction</a></td></tr>{% else %}<tr><td colspan="5">No shifts yet.</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}
+{% macro punch_button(action, label) %}<form action="{{ url_for('do_punch', action=action) }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="primary">{{ label }}</button></form>{% endmacro %}
+

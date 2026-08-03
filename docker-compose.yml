@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      PLAINPUNCH_SECRET_KEY: ${PLAINPUNCH_SECRET_KEY:?Set PLAINPUNCH_SECRET_KEY in .env}
+      PLAINPUNCH_DATABASE: /data/plainpunch.sqlite3
+      PLAINPUNCH_TIMEZONE: ${PLAINPUNCH_TIMEZONE:-UTC}
+      PLAINPUNCH_SECURE_COOKIES: ${PLAINPUNCH_SECURE_COOKIES:-0}
+    volumes:
+      - plainpunch-data:/data
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+volumes:
+  plainpunch-data:
+

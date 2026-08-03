@@ -1,0 +1,6 @@
+{% extends 'base.html' %}{% block title %}Sign in · PlainPunch{% endblock %}
+{% block content %}
+<section class="auth-card"><p class="eyebrow">A time clock, and only a time clock</p><h1>Welcome back.</h1><p>Sign in to record a shift, take a break, or review your own history.</p>
+<form method="post" class="stack"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>Email<input type="email" name="email" autocomplete="username" required></label><label>Password<input type="password" name="password" autocomplete="current-password" required></label><button class="primary">Sign in</button></form><a href="{{ url_for('kiosk') }}">Use the shared kiosk instead</a></section>
+{% endblock %}
+

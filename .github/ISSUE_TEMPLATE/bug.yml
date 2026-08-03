@@ -1,0 +1,13 @@
+name: Bug report
+description: Report reproducible incorrect behavior without employee data.
+body:
+  - type: textarea
+    attributes: {label: What happened?}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: How can we reproduce it?}
+    validations: {required: true}
+  - type: input
+    attributes: {label: PlainPunch version}
+    validations: {required: true}
+
