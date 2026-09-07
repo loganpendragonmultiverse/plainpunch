@@ -86,6 +86,12 @@ def init_db(path: str) -> None:
     database = connect(path)
     try:
         database.executescript(SCHEMA)
+        if "session_version" not in {
+            row["name"] for row in database.execute("PRAGMA table_info(users)")
+        }:
+            database.execute(
+                "ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0"
+            )
         database.commit()
     finally:
         database.close()

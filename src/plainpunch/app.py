@@ -6,8 +6,9 @@ import csv
 import io
 import os
 import secrets
+import time
 from collections.abc import Callable
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from functools import wraps
 from pathlib import Path
 from typing import Any, TypeVar, cast
@@ -30,6 +31,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from plainpunch import db as database
 from plainpunch.domain import active_break, active_entry, audit, punch, seconds_worked, utc_now
+from plainpunch.reporting import parse_wall_time, validate_shift, work_summary
 
 View = TypeVar("View", bound=Callable[..., Any])
 
@@ -45,6 +47,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("PLAINPUNCH_SECURE_COOKIES", "0") == "1",
         MAX_CONTENT_LENGTH=64 * 1024,
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
+        ADMIN_IDLE_SECONDS=int(os.environ.get("PLAINPUNCH_ADMIN_IDLE_SECONDS", "900")),
     )
     if test_config:
         app.config.update(test_config)
@@ -65,6 +69,17 @@ def register_security(app: Flask) -> None:
             g.user = database.query_one(
                 "SELECT * FROM users WHERE id = ? AND is_active = 1", (user_id,)
             )
+        if g.user is not None:
+            expired = (
+                g.user["is_admin"]
+                and time.time() - session.get("last_seen", time.time())
+                > app.config["ADMIN_IDLE_SECONDS"]
+            )
+            if session.get("session_version", 0) != g.user["session_version"] or expired:
+                session.clear()
+                g.user = None
+            else:
+                session["last_seen"] = time.time()
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             supplied = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token")
             expected = session.get("csrf_token")
@@ -129,6 +144,9 @@ def register_routes(app: Flask) -> None:
             if user and check_password_hash(user["password_hash"], request.form["password"]):
                 session.clear()
                 session["user_id"] = user["id"]
+                session["session_version"] = user["session_version"]
+                session["last_seen"] = time.time()
+                session.permanent = True
                 session["csrf_token"] = secrets.token_urlsafe(32)
                 return redirect(url_for("dashboard"))
             flash("Email or password was not recognized.", "error")
@@ -191,12 +209,25 @@ def register_routes(app: Flask) -> None:
         if entry is None:
             abort(404)
         if request.method == "POST":
-            proposed_in = parse_local(request.form["clock_in"], app.config["TIMEZONE"])
-            proposed_out = (
-                parse_local(request.form["clock_out"], app.config["TIMEZONE"])
-                if request.form["clock_out"]
-                else None
-            )
+            try:
+                proposed_in = parse_local(request.form["clock_in"], app.config["TIMEZONE"])
+                proposed_out = (
+                    parse_local(request.form["clock_out"], app.config["TIMEZONE"])
+                    if request.form["clock_out"]
+                    else None
+                )
+                validate_shift(
+                    database.get_db(), int(g.user["id"]), entry_id, proposed_in, proposed_out
+                )
+                duplicate = database.query_one(
+                    "SELECT id FROM correction_requests WHERE entry_id=? AND status='pending'",
+                    (entry_id,),
+                )
+                if duplicate:
+                    raise ValueError("A correction for this entry is already pending.")
+            except ValueError as error:
+                flash(str(error), "error")
+                return render_template("correction.html", entry=entry, local_input=local_input)
             if proposed_out and proposed_out <= proposed_in:
                 flash("Clock-out must be later than clock-in.", "error")
             elif not request.form["reason"].strip():
@@ -282,6 +313,8 @@ def register_routes(app: Flask) -> None:
         if decision not in {"approved", "rejected"}:
             abort(404)
         db = database.get_db()
+        if not db.in_transaction:
+            db.execute("BEGIN IMMEDIATE")
         correction = db.execute(
             "SELECT * FROM correction_requests WHERE id = ? AND status = 'pending'",
             (correction_id,),
@@ -289,6 +322,17 @@ def register_routes(app: Flask) -> None:
         if correction is None:
             abort(404)
         if decision == "approved":
+            try:
+                validate_shift(
+                    db,
+                    int(correction["user_id"]),
+                    int(correction["entry_id"]),
+                    correction["proposed_clock_in"],
+                    correction["proposed_clock_out"],
+                )
+            except ValueError as error:
+                flash(str(error), "error")
+                return redirect(url_for("admin"))
             original = db.execute(
                 "SELECT clock_in, clock_out FROM time_entries WHERE id = ?",
                 (correction["entry_id"],),
@@ -333,6 +377,68 @@ def register_routes(app: Flask) -> None:
         flash(f"Correction {decision}.", "success")
         return redirect(url_for("admin"))
 
+    @app.post("/admin/users/<int:user_id>/revoke-sessions")
+    @admin_required
+    def revoke_sessions(user_id: int) -> ResponseReturnValue:
+        db = database.get_db()
+        if not db.execute("SELECT id FROM users WHERE id=?", (user_id,)).fetchone():
+            abort(404)
+        db.execute("UPDATE users SET session_version=session_version+1 WHERE id=?", (user_id,))
+        audit(db, int(g.user["id"]), "sessions_revoked", "user", user_id, {})
+        db.commit()
+        flash("Existing sessions revoked. The person can sign in again.", "success")
+        return redirect(url_for("admin"))
+
+    @app.get("/admin/reports")
+    @admin_required
+    def reports() -> ResponseReturnValue:
+        today = datetime.now(ZoneInfo(app.config["TIMEZONE"])).date()
+        try:
+            start = date.fromisoformat(
+                request.args.get("start", (today - timedelta(days=6)).isoformat())
+            )
+            end = date.fromisoformat(request.args.get("end", today.isoformat()))
+            group = request.args.get("group", "daily")
+            rows = work_summary(database.get_db(), start, end, app.config["TIMEZONE"], group)
+            allowed = ["employee_code", "name", "period", "worked_seconds", "hours"]
+            columns = request.args.getlist("columns") or allowed
+            if len(set(columns)) != len(columns) or any(
+                column not in allowed for column in columns
+            ):
+                raise ValueError("Select unique supported CSV columns.")
+        except ValueError as error:
+            abort(400, str(error))
+        if request.args.get("format") == "csv":
+            output = io.StringIO(newline="")
+            writer = csv.writer(
+                output, delimiter=";" if request.args.get("delimiter") == "semicolon" else ","
+            )
+            writer.writerow(columns)
+            for row in rows:
+                values = [row[column] for column in columns]
+                writer.writerow(
+                    [
+                        ("'" + v)
+                        if isinstance(v, str) and v.startswith(("=", "+", "-", "@", "\t", "\r"))
+                        else v
+                        for v in values
+                    ]
+                )
+            return Response(
+                output.getvalue(),
+                mimetype="text/csv",
+                headers={"Content-Disposition": "attachment; filename=plainpunch-summary.csv"},
+            )
+        return render_template(
+            "reports.html",
+            rows=rows,
+            start=start,
+            end=end,
+            group=group,
+            columns=allowed,
+            timezone=app.config["TIMEZONE"],
+        )
+
     @app.get("/admin/export.csv")
     @admin_required
     def export_csv() -> ResponseReturnValue:
@@ -371,8 +477,7 @@ def register_routes(app: Flask) -> None:
 
 
 def parse_local(value: str, timezone: str) -> str:
-    parsed = datetime.fromisoformat(value).replace(tzinfo=ZoneInfo(timezone))
-    return parsed.astimezone(ZoneInfo("UTC")).isoformat(timespec="seconds")
+    return parse_wall_time(value, timezone)
 
 
 def local_input(value: str | None, timezone: str = "UTC") -> str:
