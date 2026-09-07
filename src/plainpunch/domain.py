@@ -7,6 +7,8 @@ import sqlite3
 from datetime import UTC, datetime
 from typing import Any, cast
 
+from .reporting import instant, merge_intervals
+
 
 def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
@@ -48,6 +50,8 @@ def active_break(db: sqlite3.Connection, entry_id: int) -> sqlite3.Row | None:
 
 
 def punch(db: sqlite3.Connection, user_id: int, action: str, source: str = "web") -> str:
+    if not db.in_transaction:
+        db.execute("BEGIN IMMEDIATE")
     now = utc_now()
     entry = active_entry(db, user_id)
     if action == "clock-in":
@@ -95,11 +99,17 @@ def punch(db: sqlite3.Connection, user_id: int, action: str, source: str = "web"
 
 
 def seconds_worked(clock_in: str, clock_out: str | None, breaks: list[sqlite3.Row]) -> int:
-    start = datetime.fromisoformat(clock_in)
-    end = datetime.fromisoformat(clock_out) if clock_out else datetime.now(UTC)
-    duration = (end - start).total_seconds()
-    for item in breaks:
-        break_start = datetime.fromisoformat(str(item["started_at"]))
-        break_end = datetime.fromisoformat(str(item["ended_at"])) if item["ended_at"] else end
-        duration -= max(0, (break_end - break_start).total_seconds())
-    return max(0, int(duration))
+    start = instant(clock_in)
+    end = instant(clock_out) if clock_out else datetime.now(UTC)
+    spans = merge_intervals(
+        [
+            (
+                max(start, instant(str(item["started_at"]))),
+                min(end, instant(str(item["ended_at"])) if item["ended_at"] else end),
+            )
+            for item in breaks
+        ]
+    )
+    return max(
+        0, int((end - start).total_seconds() - sum((b - a).total_seconds() for a, b in spans))
+    )
