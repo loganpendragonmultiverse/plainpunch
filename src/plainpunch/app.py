@@ -36,6 +36,15 @@ from plainpunch.reporting import parse_wall_time, validate_shift, work_summary
 View = TypeVar("View", bound=Callable[..., Any])
 
 
+def csv_cell(value: Any) -> Any:
+    """Keep spreadsheet formula and control prefixes literal in CSV exports."""
+    if isinstance(value, str) and (
+        value.startswith(("\t", "\r", "\n")) or value.lstrip().startswith(("=", "+", "-", "@"))
+    ):
+        return "'" + value
+    return value
+
+
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(__name__)
     default_database = str(Path(app.instance_path) / "plainpunch.sqlite3")
@@ -416,14 +425,7 @@ def register_routes(app: Flask) -> None:
             writer.writerow(columns)
             for row in rows:
                 values = [row[column] for column in columns]
-                writer.writerow(
-                    [
-                        ("'" + v)
-                        if isinstance(v, str) and v.startswith(("=", "+", "-", "@", "\t", "\r"))
-                        else v
-                        for v in values
-                    ]
-                )
+                writer.writerow([csv_cell(value) for value in values])
             return Response(
                 output.getvalue(),
                 mimetype="text/csv",
@@ -454,12 +456,15 @@ def register_routes(app: Flask) -> None:
             breaks = database.query_all("SELECT * FROM breaks WHERE entry_id = ?", (row["id"],))
             writer.writerow(
                 [
-                    row["employee_code"],
-                    row["name"],
-                    row["clock_in"],
-                    row["clock_out"] or "",
-                    seconds_worked(row["clock_in"], row["clock_out"], breaks),
-                    row["source"],
+                    csv_cell(value)
+                    for value in [
+                        row["employee_code"],
+                        row["name"],
+                        row["clock_in"],
+                        row["clock_out"] or "",
+                        seconds_worked(row["clock_in"], row["clock_out"], breaks),
+                        row["source"],
+                    ]
                 ]
             )
         return Response(
