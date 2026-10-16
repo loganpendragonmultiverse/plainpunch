@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1 - 2026-10-16
+
+- Apply the same spreadsheet formula neutralization to the legacy administrator CSV export and work-summary CSV export.
+- Add synthetic regression coverage and packaged development/testing documentation.
+
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and semantic versioning.
 
 ## [1.0.0] - 2026-08-03
