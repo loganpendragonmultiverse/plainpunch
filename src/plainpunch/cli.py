@@ -6,18 +6,23 @@ import argparse
 import os
 import sys
 from getpass import getpass
+from pathlib import Path
 
+from flask import Flask
 from werkzeug.security import generate_password_hash
 
 from plainpunch.db import connect, init_db
-from plainpunch.domain import audit, utc_now
+from plainpunch.domain import audit, utc_now, validate_user_inputs
 
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="plainpunch")
     result.add_argument(
         "--database",
-        default=os.environ.get("PLAINPUNCH_DATABASE", "instance/plainpunch.sqlite3"),
+        default=os.environ.get(
+            "PLAINPUNCH_DATABASE",
+            str(Path(Flask("plainpunch.app").instance_path) / "plainpunch.sqlite3"),
+        ),
         help="SQLite database path",
     )
     commands = result.add_subparsers(dest="command", required=True)
@@ -39,11 +44,10 @@ def main(arguments: list[str] | None = None) -> int:
         return 0
     password = options.password or getpass("Password: ")
     pin = options.pin or getpass("Kiosk PIN: ")
-    if len(password) < 12:
-        print("Password must be at least 12 characters.", file=sys.stderr)
-        return 2
-    if not (4 <= len(pin) <= 12 and pin.isdigit()):
-        print("PIN must contain 4 to 12 digits.", file=sys.stderr)
+    try:
+        validate_user_inputs(options.name, options.email, options.employee_code, password, pin)
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
         return 2
     db = connect(options.database)
     try:

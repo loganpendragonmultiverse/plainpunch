@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.2] - 2026-10-21
+
+### Fixed
+
+- Make the bootstrap CLI use the same default SQLite path as the web app, including installed virtual environments. Explicit database paths remain unchanged; existing files are never moved or merged.
+- Enforce the existing password/PIN and nonblank account rules on server-side account creation as well as CLI bootstrap.
+- Include deployment and backup/recovery guides in the installed wheel.
+
+### Verification
+
+- Add synthetic default bootstrap/login and online backup/restore acceptance, including approved corrections, before/after audit records, breaks, session revisions and CSV access.
+
+
 ## 1.1.1 - 2026-10-16
 
 - Apply the same spreadsheet formula neutralization to the legacy administrator CSV export and work-summary CSV export.

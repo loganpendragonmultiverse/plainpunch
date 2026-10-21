@@ -39,7 +39,7 @@ flask --app plainpunch:create_app run --debug
 
 ## Data and backups
 
-All authoritative records live in one SQLite file (`instance/plainpunch.sqlite3` locally or `/data/plainpunch.sqlite3` in Docker). Stop writes or use SQLite's online backup API before copying it. Back up the database and your deployment configuration; never commit either.
+All authoritative records live in one SQLite file. Docker uses `/data/plainpunch.sqlite3`; local installations use Flask’s instance directory unless `PLAINPUNCH_DATABASE` is set. The CLI and web app use the same default. For a stable operator-chosen path, set `PLAINPUNCH_DATABASE` to an absolute filename before running either command. Stop writes or use SQLite’s online backup API before copying it. Back up the database and your deployment configuration; never commit either. See [backup and recovery](docs/backup-recovery.md), including the pre-1.1.2 local setup caveat.
 
 CSV export is an interoperability aid, not a complete backup: it excludes passwords, break detail, requests, and audit events.
 

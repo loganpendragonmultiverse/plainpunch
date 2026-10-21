@@ -30,7 +30,15 @@ from flask.typing import ResponseReturnValue
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from plainpunch import db as database
-from plainpunch.domain import active_break, active_entry, audit, punch, seconds_worked, utc_now
+from plainpunch.domain import (
+    active_break,
+    active_entry,
+    audit,
+    punch,
+    seconds_worked,
+    utc_now,
+    validate_user_inputs,
+)
 from plainpunch.reporting import parse_wall_time, validate_shift, work_summary
 
 View = TypeVar("View", bound=Callable[..., Any])
@@ -284,6 +292,17 @@ def register_routes(app: Flask) -> None:
     @app.post("/admin/users")
     @admin_required
     def create_user() -> ResponseReturnValue:
+        try:
+            validate_user_inputs(
+                request.form["name"],
+                request.form["email"],
+                request.form["employee_code"],
+                request.form["password"],
+                request.form["pin"],
+            )
+        except ValueError as error:
+            flash(str(error), "error")
+            return redirect(url_for("admin"))
         db = database.get_db()
         try:
             cursor = db.execute(

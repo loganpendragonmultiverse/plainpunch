@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "plainpunch"
-version = "1.1.1"
+version = "1.1.2"
 description = "A small self-hosted time clock without surveillance."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -54,6 +54,8 @@ disable_error_code = ["type-var"]
 "DEVELOPMENT.md" = "plainpunch/docs/DEVELOPMENT.md"
 "TESTING.md" = "plainpunch/docs/TESTING.md"
 "LICENSE" = "plainpunch/docs/LICENSE"
+"docs/backup-recovery.md" = "plainpunch/docs/docs/backup-recovery.md"
+"docs/deployment-controls.md" = "plainpunch/docs/docs/deployment-controls.md"
 
 [tool.hatch.build.targets.sdist]
 exclude = ["/.venv", "/.install", "/.forge-review", "/.forge-task.json", "/dist"]

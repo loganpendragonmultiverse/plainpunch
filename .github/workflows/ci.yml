@@ -27,3 +27,4 @@ jobs:
       - run: coverage report
       - run: python -m pip_audit --skip-editable
       - run: python -m build
+      - run: python tests/accept_installed.py --wheel dist/plainpunch-1.1.2-py3-none-any.whl --report installed-acceptance.json
