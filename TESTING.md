@@ -34,3 +34,11 @@ See [deployment controls](docs/deployment-controls.md). Validation includes stri
 ## 1.1.1 — 2026-10-16
 
 Temporary synthetic SQLite fixtures compare both CSV routes for formula/control/whitespace prefixes, Unicode, quotes and multiline values. Verify administrator-only access, revoked and expired sessions, unchanged stored values and worked seconds. Run the existing DST, break, overlap, correction and session tests.
+
+## Installation and recovery acceptance
+
+`tests/test_install_recovery.py` verifies that bootstrap CLI and web defaults share one database, then exercises synthetic punches, a correction approval, session revocation, online SQLite backup and restore. It compares every authoritative table, checks before/after audit evidence, and signs in against the restored database. Release acceptance also installs the built wheel into a fresh virtual environment outside the source tree and repeats default bootstrap/login.
+
+After `python -m build`, run `python tests/accept_installed.py --wheel dist/plainpunch-1.1.2-py3-none-any.whl --report .forge-review/installed-acceptance.json`. This creates a fresh temporary virtual environment, installs the wheel outside the checkout, and exercises its console bootstrap and installed Flask routes. The existing six-platform CI matrix runs this check too; Windows exercises local Flask behavior, while Gunicorn/Docker deployment remains Linux-only.
+
+Linux Docker acceptance: `python tests/accept_docker.py --report .forge-review/docker-acceptance.json`. This builds the documented Dockerfile and runs its real two-worker Gunicorn command with a disposable tmpfs database, no host ports and no runtime network. It checks HTTP bootstrap/login, repeated authenticated requests, health and administrator CSV. It stops only the container created by the check. It does not test a production reverse proxy or an operator's volume/backup storage.

@@ -8,3 +8,7 @@ dist
 *.sqlite3
 .env
 
+
+.forge-task.json
+.forge-review
+**/.forge-write-*.lock

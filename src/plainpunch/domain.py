@@ -113,3 +113,15 @@ def seconds_worked(clock_in: str, clock_out: str | None, breaks: list[sqlite3.Ro
     return max(
         0, int((end - start).total_seconds() - sum((b - a).total_seconds() for a, b in spans))
     )
+
+
+def validate_user_inputs(
+    name: str, email: str, employee_code: str, password: str, pin: str
+) -> None:
+    """Enforce account input rules for CLI and HTTP callers."""
+    if not (name.strip() and email.strip() and employee_code.strip()):
+        raise ValueError("Name, email and employee code are required.")
+    if len(password) < 12:
+        raise ValueError("Password must be at least 12 characters.")
+    if not (4 <= len(pin) <= 12 and pin.isdigit()):
+        raise ValueError("PIN must contain 4 to 12 digits.")

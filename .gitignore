@@ -13,3 +13,7 @@ build/
 .env
 .env.*
 !.env.example
+
+# Local executor metadata
+.forge-task.json
+.forge-write-*.lock
