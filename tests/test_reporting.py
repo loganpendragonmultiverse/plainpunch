@@ -94,6 +94,19 @@ def test_report_routes_and_sessions(client, app):
         "/admin/reports?start=2026-03-08&end=2026-03-08&group=weekly&format=csv&columns=name&columns=hours&delimiter=semicolon"
     )
     assert response.status_code == 200 and b"name;hours" in response.data
+
+    preview = client.get(
+        "/admin/reports?start=2026-03-08&end=2026-03-08&group=weekly"
+        "&format=html&columns=name&columns=hours&delimiter=semicolon"
+    )
+    assert preview.status_code == 200
+    assert b'value="name" checked' in preview.data
+    assert b'value="hours" checked' in preview.data
+    assert b'value="employee_code" checked' not in preview.data
+    assert b'value="semicolon" selected' in preview.data
+    assert b"No work was recorded" not in preview.data
+    empty = client.get("/admin/reports?start=2026-01-01&end=2026-01-01")
+    assert b"No work was recorded for this date range." in empty.data
     assert client.get("/admin/reports?columns=secret").status_code == 400
     assert client.get("/admin/reports?start=bad").status_code == 400
     assert (

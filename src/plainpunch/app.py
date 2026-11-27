@@ -436,11 +436,10 @@ def register_routes(app: Flask) -> None:
                 raise ValueError("Select unique supported CSV columns.")
         except ValueError as error:
             abort(400, str(error))
+        delimiter = "semicolon" if request.args.get("delimiter") == "semicolon" else "comma"
         if request.args.get("format") == "csv":
             output = io.StringIO(newline="")
-            writer = csv.writer(
-                output, delimiter=";" if request.args.get("delimiter") == "semicolon" else ","
-            )
+            writer = csv.writer(output, delimiter=";" if delimiter == "semicolon" else ",")
             writer.writerow(columns)
             for row in rows:
                 values = [row[column] for column in columns]
@@ -453,10 +452,13 @@ def register_routes(app: Flask) -> None:
         return render_template(
             "reports.html",
             rows=rows,
+            has_work=any(row["worked_seconds"] for row in rows),
             start=start,
             end=end,
             group=group,
             columns=allowed,
+            selected_columns=columns,
+            delimiter=delimiter,
             timezone=app.config["TIMEZONE"],
         )
 

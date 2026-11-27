@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Make Export CSV and Work summaries readable on the Admin page, with visible keyboard focus and room to wrap on narrow screens (#13).
+
+### Improved
+
+- Keep selected CSV columns and separator when previewing a work summary.
+- Show a clear message when the selected date range has no work.
+
 ## [1.1.2] - 2026-10-21
 
 ### Fixed
