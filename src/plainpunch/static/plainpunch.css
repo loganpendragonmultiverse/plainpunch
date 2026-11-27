@@ -2,3 +2,25 @@
 
 
 .stack select{font:inherit;width:100%;padding:.75rem;border:1px solid var(--line);border-radius:.5rem;background:white;color:var(--ink)}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  flex-shrink: 0;
+}
+.hero-actions .button {
+  border-color: var(--paper);
+  color: var(--paper);
+}
+.hero-actions .button:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+.hero-actions .button:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 3px;
+}
+@media (max-width: 750px) {
+  .hero-actions { margin-top: 1rem; }
+}
